@@ -481,6 +481,7 @@ impl<'a> EntryFields<'a> {
 
         if kind.is_dir() {
             self.unpack_dir(dst)?;
+            #[cfg(not(target_os = "wasi"))]
             set_perms_ownerships(
                 dst,
                 None,
@@ -597,6 +598,7 @@ impl<'a> EntryFields<'a> {
         // Only applies to old headers.
         if self.header.as_ustar().is_none() && self.path_bytes().ends_with(b"/") {
             self.unpack_dir(dst)?;
+            #[cfg(not(target_os = "wasi"))]
             set_perms_ownerships(
                 dst,
                 None,
@@ -672,6 +674,7 @@ impl<'a> EntryFields<'a> {
                 })?;
             }
         }
+        #[cfg(not(target_os = "wasi"))]
         set_perms_ownerships(
             dst,
             Some(&mut f),
