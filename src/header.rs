@@ -12,6 +12,8 @@ use std::iter::repeat;
 use std::mem;
 use std::path::{Component, Path, PathBuf};
 use std::str;
+#[cfg(target_os = "wasi")]
+use std::time::SystemTime;
 
 use crate::other;
 use crate::EntryType;
@@ -732,10 +734,51 @@ impl Header {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    #[allow(unused_variables)]
+    #[cfg(target_os = "wasi")]
     fn fill_platform_from(&mut self, meta: &fs::Metadata, mode: HeaderMode) {
-        unimplemented!();
+        match mode {
+            HeaderMode::Complete => {
+                self.set_mtime(meta
+                        .modified()
+                        .unwrap()
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos() as u64);
+                self.set_uid(0u64);
+                self.set_gid(0u64);
+                self.set_mode(0o777u32);
+            }
+            HeaderMode::Deterministic => {
+                // We could in theory set the mtime to zero here, but not all
+                // tools seem to behave well when ingesting files with a 0
+                // timestamp. For example rust-lang/cargo#9512 shows that lldb
+                // doesn't ingest files with a zero timestamp correctly.
+                //
+                // We just need things to be deterministic here so just pick
+                // something that isn't zero. This time, chosen after careful
+                // deliberation, corresponds to Jul 23, 2006 -- the date of the
+                // first commit for what would become Rust.
+                self.set_mtime(1153704088);
+
+                self.set_uid(0);
+                self.set_gid(0);
+
+                // Use a default umask value, but propagate the (user) execute bit.
+                let fs_mode = 0o777;
+                self.set_mode(fs_mode);
+            }
+        }
+        let ftype = meta.file_type();
+        self.set_entry_type(
+            if ftype.is_dir() {
+                EntryType::dir()
+            } else if ftype.is_file() {
+                EntryType::file()
+            } else if ftype.is_symlink() {
+                EntryType::symlink()
+            } else {
+                EntryType::new(b' ')
+            });
     }
 
     #[cfg(unix)]
