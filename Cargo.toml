@@ -19,7 +19,7 @@ contents are never required to be entirely resident in memory all at once.
 """
 
 [dependencies]
-filetime = { git = "https://github.com/antmicro/filetime", rev = "791a84af917ec3a0ff237b6f506effb3b669dc16" }
+filetime = { git = "https://github.com/antmicro/filetime", rev = "e2592e883b5a4bdb0372c2084f0e07d94774615a" }
 
 [dev-dependencies]
 tempfile = "3"
